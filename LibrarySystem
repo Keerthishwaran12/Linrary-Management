@@ -1,0 +1,597 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+
+
+public class LibrarySystem extends Frame implements ActionListener {
+    
+    // --- MAIN FUNCTION (Entry Point) ---
+    // Eclipse looks for this specific line to start the program.
+    public static void main(String[] args) {
+        new LibrarySystem();
+    }
+
+    // CardLayout to switch between screens (Modules)
+    CardLayout cardLayout;
+    Panel mainPanel;
+
+    // --- DATA STORAGE ---
+    ArrayList<Book> bookList = new ArrayList<>();
+    ArrayList<Member> memberList = new ArrayList<>();
+    ArrayList<Transaction> transactionList = new ArrayList<>();
+
+    // --- GUI COMPONENTS ---
+    TextField tfUsername, tfPassword;
+    Label lblLoginStatus;
+
+    TextField tfBookTitle, tfBookAuthor, tfBookId, tfBookQty;
+    TextArea taBookList;
+
+    TextField tfMemName, tfMemId, tfMemType;
+    TextArea taMemberList;
+
+    TextField tfIssueBookId, tfIssueMemId;
+    TextField tfReturnBookId, tfReturnMemId, tfReturnDays;
+    TextField tfSearch;
+    Label lblIssueStatus, lblReturnStatus, lblFineMsg;
+    TextArea taReportList;
+    TextField tfReportBookId, tfReportPurpose;
+    Label lblReportStatus;
+    ArrayList<BookReport> bookReportList = new ArrayList<>();
+
+    public LibrarySystem() {
+        super("Library Management System - Keerthishwaran A (927624BAD045)");
+        
+        // Initialize dummy data
+        bookList.add(new Book("B101", "Java Programming", "James Gosling", 5));
+        bookList.add(new Book("B102", "Data Structures", "Robert Lafore", 3));
+        memberList.add(new Member("M001", "Keerthishwaran", "Student"));
+
+        // Main Window Settings
+        setSize(800, 600);
+        setLayout(new BorderLayout());
+        setBackground(Color.LIGHT_GRAY);
+
+        // Window Closing Event
+        addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent windowEvent) {
+                System.exit(0);
+            }
+        });
+
+        // --- HEADER ---
+        Panel headerPanel = new Panel();
+        headerPanel.setBackground(new Color(50, 50, 150)); // Dark Blue
+        Label titleLabel = new Label("LIBRARY MANAGEMENT SYSTEM");
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        headerPanel.add(titleLabel);
+        add(headerPanel, BorderLayout.NORTH);
+
+        // --- MAIN CARD PANEL ---
+        cardLayout = new CardLayout();
+        mainPanel = new Panel(cardLayout);
+
+        // Create Modules
+        mainPanel.add(createLoginPanel(), "Login");
+        mainPanel.add(createDashboardPanel(), "Dashboard");
+        mainPanel.add(createBookPanel(), "Books");
+        mainPanel.add(createMemberPanel(), "Members");
+        mainPanel.add(createIssuePanel(), "Issue");
+        mainPanel.add(createReturnPanel(), "Return");
+        mainPanel.add(createReportPanel(), "Reports");
+
+        add(mainPanel, BorderLayout.CENTER);
+
+        setVisible(true);
+    }
+
+    // --- MODULE 1: LOGIN MODULE ---
+    private Panel createLoginPanel() {
+        Panel p = new Panel(null);
+        p.setBackground(new Color(230, 230, 230));
+
+        Label l1 = new Label("Username (admin):");
+        l1.setBounds(300, 200, 100, 30);
+        tfUsername = new TextField();
+        tfUsername.setBounds(410, 200, 150, 30);
+
+        Label l2 = new Label("Password (123):");
+        l2.setBounds(300, 250, 100, 30);
+        tfPassword = new TextField();
+        tfPassword.setEchoChar('*');
+        tfPassword.setBounds(410, 250, 150, 30);
+
+        Button btnLogin = new Button("Login");
+        btnLogin.setBounds(350, 300, 100, 30);
+        btnLogin.addActionListener(e -> {
+            if (tfUsername.getText().equals("admin") && tfPassword.getText().equals("123")) {
+                cardLayout.show(mainPanel, "Dashboard");
+            } else {
+                lblLoginStatus.setText("Invalid Credentials!");
+            }
+        });
+
+        lblLoginStatus = new Label("");
+        lblLoginStatus.setForeground(Color.RED);
+        lblLoginStatus.setBounds(350, 340, 200, 30);
+
+        p.add(l1); p.add(tfUsername);
+        p.add(l2); p.add(tfPassword);
+        p.add(btnLogin); p.add(lblLoginStatus);
+        return p;
+    }
+
+    // --- DASHBOARD ---
+    private Panel createDashboardPanel() {
+        Panel p = new Panel(new GridLayout(3, 2, 20, 20));
+        Panel container = new Panel(new BorderLayout());
+        container.add(new Label("  "), BorderLayout.NORTH);
+        container.add(new Label("  "), BorderLayout.WEST);
+        container.add(new Label("  "), BorderLayout.EAST);
+        container.add(new Label("  "), BorderLayout.SOUTH);
+
+        Button b1 = new Button("Book Management");
+        Button b2 = new Button("Member Management");
+        Button b3 = new Button("Issue Book");
+        Button b4 = new Button("Return & Fine");
+        Button b5 = new Button("Report Book");
+        Button b6 = new Button("Logout");
+
+        b1.addActionListener(e -> cardLayout.show(mainPanel, "Books"));
+        b2.addActionListener(e -> cardLayout.show(mainPanel, "Members"));
+        b3.addActionListener(e -> cardLayout.show(mainPanel, "Issue"));
+        b4.addActionListener(e -> cardLayout.show(mainPanel, "Return"));
+        b5.addActionListener(e -> {
+            updateReportList();
+            cardLayout.show(mainPanel, "Reports");
+        });
+        b6.addActionListener(e -> cardLayout.show(mainPanel, "Login"));
+
+        p.add(b1); p.add(b2); p.add(b3); p.add(b4); p.add(b5); p.add(b6);
+        container.add(p, BorderLayout.CENTER);
+        return container;
+    }
+
+    // --- MODULE 2: BOOK MANAGEMENT ---
+    private Panel createBookPanel() {
+        Panel p = new Panel(new BorderLayout());
+
+        Panel formPanel = new Panel(new GridLayout(5, 2));
+        tfBookId = new TextField();
+        tfBookTitle = new TextField();
+        tfBookAuthor = new TextField();
+        tfBookQty = new TextField();
+
+        formPanel.add(new Label("Book ID:")); formPanel.add(tfBookId);
+        formPanel.add(new Label("Title:")); formPanel.add(tfBookTitle);
+        formPanel.add(new Label("Author:")); formPanel.add(tfBookAuthor);
+        formPanel.add(new Label("Quantity:")); formPanel.add(tfBookQty);
+
+        Button btnAdd = new Button("Add Book");
+        btnAdd.addActionListener(this);
+        formPanel.add(btnAdd);
+
+        Button btnBack = new Button("Back to Dashboard");
+        btnBack.addActionListener(e -> cardLayout.show(mainPanel, "Dashboard"));
+        formPanel.add(btnBack);
+
+        Panel searchPanel = new Panel(new FlowLayout());
+        tfSearch = new TextField(20);
+        Button btnSearch = new Button("Search Books");
+        btnSearch.addActionListener(this);
+        Button btnShowAll = new Button("Show All");
+        btnShowAll.addActionListener(this);
+        searchPanel.add(new Label("Search:")); searchPanel.add(tfSearch); searchPanel.add(btnSearch); searchPanel.add(btnShowAll);
+
+        taBookList = new TextArea();
+        taBookList.setEditable(false);
+
+        Panel centerPanel = new Panel(new BorderLayout());
+        centerPanel.add(searchPanel, BorderLayout.NORTH);
+        centerPanel.add(taBookList, BorderLayout.CENTER);
+
+        p.add(formPanel, BorderLayout.NORTH);
+        p.add(centerPanel, BorderLayout.CENTER);
+        return p;
+    }
+
+    // --- MODULE 3: MEMBER MANAGEMENT ---
+    private Panel createMemberPanel() {
+        Panel p = new Panel(new BorderLayout());
+        
+        Panel formPanel = new Panel(new GridLayout(4, 2));
+        tfMemId = new TextField();
+        tfMemName = new TextField();
+        tfMemType = new TextField();
+        
+        formPanel.add(new Label("Member ID:")); formPanel.add(tfMemId);
+        formPanel.add(new Label("Name:")); formPanel.add(tfMemName);
+        formPanel.add(new Label("Type (Student/Staff):")); formPanel.add(tfMemType);
+        
+        Button btnAdd = new Button("Register Member");
+        btnAdd.addActionListener(this);
+        formPanel.add(btnAdd);
+        
+        Button btnBack = new Button("Back to Dashboard");
+        btnBack.addActionListener(e -> cardLayout.show(mainPanel, "Dashboard"));
+        formPanel.add(btnBack);
+
+        taMemberList = new TextArea();
+        taMemberList.setEditable(false);
+
+        p.add(formPanel, BorderLayout.NORTH);
+        p.add(taMemberList, BorderLayout.CENTER);
+        return p;
+    }
+
+    // --- MODULE 4: ISSUE MODULE ---
+    private Panel createIssuePanel() {
+        Panel p = new Panel(null);
+        
+        Label l1 = new Label("Book ID:");
+        l1.setBounds(50, 50, 100, 30);
+        tfIssueBookId = new TextField();
+        tfIssueBookId.setBounds(160, 50, 150, 30);
+        
+        Label l2 = new Label("Member ID:");
+        l2.setBounds(50, 100, 100, 30);
+        tfIssueMemId = new TextField();
+        tfIssueMemId.setBounds(160, 100, 150, 30);
+
+        Button btnIssue = new Button("Issue Book");
+        btnIssue.setBounds(100, 150, 100, 30);
+        btnIssue.addActionListener(this);
+
+        Button btnBack = new Button("Back");
+        btnBack.setBounds(220, 150, 100, 30);
+        btnBack.addActionListener(e -> cardLayout.show(mainPanel, "Dashboard"));
+
+        lblIssueStatus = new Label("Ready to issue...");
+        lblIssueStatus.setBounds(50, 200, 400, 30);
+
+        p.add(l1); p.add(tfIssueBookId);
+        p.add(l2); p.add(tfIssueMemId);
+        p.add(btnIssue); p.add(btnBack);
+        p.add(lblIssueStatus);
+        return p;
+    }
+
+    // --- MODULE 5 & 6: RETURN & FINE MODULE ---
+    private Panel createReturnPanel() {
+        Panel p = new Panel(null);
+        
+        Label l1 = new Label("Book ID:");
+        l1.setBounds(50, 50, 100, 30);
+        tfReturnBookId = new TextField();
+        tfReturnBookId.setBounds(160, 50, 150, 30);
+        
+        Label l2 = new Label("Member ID:");
+        l2.setBounds(50, 100, 100, 30);
+        tfReturnMemId = new TextField();
+        tfReturnMemId.setBounds(160, 100, 150, 30);
+        
+        Label l3 = new Label("Days Kept:");
+        l3.setBounds(50, 150, 100, 30);
+        tfReturnDays = new TextField();
+        tfReturnDays.setBounds(160, 150, 150, 30);
+
+        Button btnReturn = new Button("Return Book");
+        btnReturn.setBounds(100, 200, 100, 30);
+        btnReturn.addActionListener(this);
+
+        Button btnBack = new Button("Back");
+        btnBack.setBounds(220, 200, 100, 30);
+        btnBack.addActionListener(e -> cardLayout.show(mainPanel, "Dashboard"));
+
+        lblReturnStatus = new Label("Ready to return...");
+        lblReturnStatus.setBounds(50, 250, 400, 30);
+        
+        lblFineMsg = new Label("Fine: Rs 0.0");
+        lblFineMsg.setFont(new Font("Arial", Font.BOLD, 14));
+        lblFineMsg.setForeground(Color.RED);
+        lblFineMsg.setBounds(50, 290, 400, 30);
+
+        p.add(l1); p.add(tfReturnBookId);
+        p.add(l2); p.add(tfReturnMemId);
+        p.add(l3); p.add(tfReturnDays);
+        p.add(btnReturn); p.add(btnBack);
+        p.add(lblReturnStatus); p.add(lblFineMsg);
+        return p;
+    }
+
+    // --- REPORTS MODULE ---
+    private Panel createReportPanel() {
+        Panel p = new Panel(new BorderLayout());
+
+        Label titleLabel = new Label("Report a Book");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setAlignment(Label.CENTER);
+
+        // Form panel for reporting a book
+        Panel formPanel = new Panel(new GridLayout(4, 2, 10, 10));
+        tfReportBookId = new TextField();
+        tfReportPurpose = new TextField();
+
+        formPanel.add(new Label("Book ID:"));
+        formPanel.add(tfReportBookId);
+        formPanel.add(new Label("Report Purpose:"));
+        formPanel.add(tfReportPurpose);
+
+        Button btnReport = new Button("Submit Report");
+        btnReport.addActionListener(this);
+        formPanel.add(btnReport);
+
+        lblReportStatus = new Label("");
+        lblReportStatus.setForeground(Color.BLUE);
+        formPanel.add(lblReportStatus);
+
+        // TextArea to show all reported books
+        taReportList = new TextArea();
+        taReportList.setEditable(false);
+
+        Button btnBack = new Button("Back to Dashboard");
+        btnBack.addActionListener(e -> cardLayout.show(mainPanel, "Dashboard"));
+
+        Panel bottomPanel = new Panel(new FlowLayout());
+        bottomPanel.add(btnBack);
+
+        Panel topPanel = new Panel(new BorderLayout());
+        topPanel.add(titleLabel, BorderLayout.NORTH);
+        topPanel.add(formPanel, BorderLayout.CENTER);
+
+        p.add(topPanel, BorderLayout.NORTH);
+        p.add(taReportList, BorderLayout.CENTER);
+        p.add(bottomPanel, BorderLayout.SOUTH);
+        return p;
+    }
+
+    private void updateReportList() {
+        StringBuilder sb = new StringBuilder("--- REPORTED BOOKS ---\n");
+        if (bookReportList.isEmpty()) {
+            sb.append("No books have been reported yet.\n");
+        } else {
+            for (BookReport br : bookReportList) {
+                sb.append("Book ID: ").append(br.bookId);
+                sb.append(" | Purpose: ").append(br.purpose);
+                sb.append(" | Date: ").append(br.reportDate).append("\n");
+            }
+        }
+        taReportList.setText(sb.toString());
+    }
+
+    private String getBookReport() {
+        StringBuilder sb = new StringBuilder("--- CURRENT BOOK STOCK ---\n");
+        for (Book b : bookList) {
+            sb.append(b.id).append(" | ").append(b.title).append(" | Qty: ").append(b.quantity).append("\n");
+        }
+        return sb.toString();
+    }
+
+    // --- ACTION HANDLING ---
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String cmd = e.getActionCommand();
+
+        if (cmd.equals("Add Book")) {
+            try {
+                String id = tfBookId.getText();
+                String title = tfBookTitle.getText();
+                String auth = tfBookAuthor.getText();
+                int qty = Integer.parseInt(tfBookQty.getText());
+                bookList.add(new Book(id, title, auth, qty));
+                updateBookReport();
+                tfBookId.setText(""); tfBookTitle.setText("");
+            } catch (Exception ex) {
+                taBookList.setText("Error: Invalid Input");
+            }
+        } 
+        else if (cmd.equals("Register Member")) {
+            String id = tfMemId.getText();
+            String name = tfMemName.getText();
+            String type = tfMemType.getText();
+            memberList.add(new Member(id, name, type));
+            updateMemberReport();
+            tfMemId.setText(""); tfMemName.setText("");
+        }
+        else if (cmd.equals("Issue Book")) {
+            String bid = tfIssueBookId.getText().trim();
+            String mid = tfIssueMemId.getText().trim();
+            
+            // Validation checks
+            if (bid.isEmpty() || mid.isEmpty()) {
+                lblIssueStatus.setText("Error: Please fill both Book ID and Member ID");
+                return;
+            }
+            
+            Book book = findBook(bid);
+            Member member = findMember(mid);
+            
+            if (book == null) {
+                lblIssueStatus.setText("Error: Book ID not found in system");
+            } else if (member == null) {
+                lblIssueStatus.setText("Error: Member ID not found in system");
+            } else if (book.quantity <= 0) {
+                lblIssueStatus.setText("Error: Book out of stock");
+            } else {
+                transactionList.add(new Transaction(bid, mid, new Date()));
+                book.quantity--;
+                lblIssueStatus.setText("Success: \"" + book.title + "\" issued to Member " + mid);
+                tfIssueBookId.setText("");
+                tfIssueMemId.setText("");
+            }
+        }
+        else if (cmd.equals("Return Book")) {
+            String bid = tfReturnBookId.getText().trim();
+            String mid = tfReturnMemId.getText().trim();
+            String daysStr = tfReturnDays.getText().trim();
+
+            // Validation checks
+            if (bid.isEmpty() || mid.isEmpty() || daysStr.isEmpty()) {
+                lblReturnStatus.setText("Error: Please fill all fields (Book ID, Member ID, Days)");
+                lblFineMsg.setText("");
+                return;
+            }
+
+            try {
+                long daysKept = Long.parseLong(daysStr);
+
+                // Validate days is positive
+                if (daysKept <= 0) {
+                    lblReturnStatus.setText("Error: Days must be greater than 0");
+                    lblFineMsg.setText("");
+                    return;
+                }
+
+                // Check if transaction exists
+                Transaction trans = findTransaction(bid, mid);
+                if (trans == null) {
+                    lblReturnStatus.setText("Error: No transaction found for this book and member");
+                    lblFineMsg.setText("");
+                    return;
+                }
+
+                // Find the book
+                Book book = findBook(bid);
+                if (book == null) {
+                    lblReturnStatus.setText("Error: Book not found");
+                    lblFineMsg.setText("");
+                    return;
+                }
+
+                // Process return
+                book.quantity++;
+
+                // Calculate fine: Rs 6.0 per day after 7 days
+                double fine = 0;
+                if (daysKept > 7) {
+                    fine = (daysKept - 7) * 6.0;
+                }
+
+                // Update status
+                lblReturnStatus.setText("Success: \"" + book.title + "\" returned by Member " + mid);
+                if (fine > 0) {
+                    lblFineMsg.setText("Days: " + daysKept + " | Fine: Rs " + String.format("%.2f", fine));
+                } else {
+                    lblFineMsg.setText("Days: " + daysKept + " | No Fine (within allowed period)");
+                }
+
+                // Remove transaction
+                transactionList.remove(trans);
+
+                // Clear input fields
+                tfReturnBookId.setText("");
+                tfReturnMemId.setText("");
+                tfReturnDays.setText("");
+
+            } catch (NumberFormatException ex) {
+                lblReturnStatus.setText("Error: Days must be a valid number");
+                lblFineMsg.setText("");
+            }
+        }
+        else if (cmd.equals("Search Books")) {
+            String search = tfSearch.getText().toLowerCase();
+            StringBuilder sb = new StringBuilder("--- SEARCH RESULTS ---\n");
+            for (Book b : bookList) {
+                if (b.title.toLowerCase().contains(search) || b.author.toLowerCase().contains(search)) {
+                    sb.append(b.id).append(" | ").append(b.title).append(" | Qty: ").append(b.quantity).append("\n");
+                }
+            }
+            taBookList.setText(sb.toString());
+        }
+        else if (cmd.equals("Show All")) {
+            updateBookReport();
+        }
+        else if (cmd.equals("Submit Report")) {
+            String bookId = tfReportBookId.getText().trim();
+            String purpose = tfReportPurpose.getText().trim();
+
+            if (bookId.isEmpty() || purpose.isEmpty()) {
+                lblReportStatus.setText("Error: Please fill both fields");
+                lblReportStatus.setForeground(Color.RED);
+                return;
+            }
+
+            Book book = findBook(bookId);
+            if (book == null) {
+                lblReportStatus.setText("Error: Book ID not found");
+                lblReportStatus.setForeground(Color.RED);
+                return;
+            }
+
+            bookReportList.add(new BookReport(bookId, purpose, new Date()));
+            lblReportStatus.setText("Report submitted for: " + book.title);
+            lblReportStatus.setForeground(Color.BLUE);
+            tfReportBookId.setText("");
+            tfReportPurpose.setText("");
+            updateReportList();
+        }
+    }
+
+    private void updateBookReport() {
+        taBookList.setText(getBookReport());
+    }
+
+    private void updateMemberReport() {
+        StringBuilder sb = new StringBuilder("--- REGISTERED MEMBERS ---\n");
+        for (Member m : memberList) {
+            sb.append(m.id).append(" | ").append(m.name).append(" | ").append(m.type).append("\n");
+        }
+        taMemberList.setText(sb.toString());
+    }
+
+    private Book findBook(String id) {
+        for (Book b : bookList) {
+            if (b.id.equalsIgnoreCase(id)) return b;
+        }
+        return null;
+    }
+
+    private Member findMember(String id) {
+        for (Member m : memberList) {
+            if (m.id.equalsIgnoreCase(id)) return m;
+        }
+        return null;
+    }
+
+    private Transaction findTransaction(String bid, String mid) {
+        for (Transaction t : transactionList) {
+            if (t.bookId.equalsIgnoreCase(bid) && t.memberId.equalsIgnoreCase(mid)) return t;
+        }
+        return null;
+    }
+
+    // --- DATA CLASSES ---
+    class Book {
+        String id, title, author;
+        int quantity;
+        Book(String id, String t, String a, int q) {
+            this.id = id; this.title = t; this.author = a; this.quantity = q;
+        }
+    }
+
+    class Member {
+        String id, name, type;
+        Member(String id, String n, String t) {
+            this.id = id; this.name = n; this.type = t;
+        }
+    }
+
+    class Transaction {
+        String bookId, memberId;
+        Date issueDate;
+        Transaction(String bid, String mid, Date d) {
+            this.bookId = bid; this.memberId = mid; this.issueDate = d;
+        }
+    }
+
+    class BookReport {
+        String bookId, purpose;
+        Date reportDate;
+        BookReport(String bookId, String purpose, Date reportDate) {
+            this.bookId = bookId;
+            this.purpose = purpose;
+            this.reportDate = reportDate;
+        }
+    }
+}
